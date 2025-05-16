@@ -21,11 +21,11 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
+    _database = await initDatabase();
     return _database!;
   }
 
-  Future<Database> _initDatabase() async {
+  Future<Database> initDatabase() async {
     final databasePath = await getDatabasesPath();
     final path = join(databasePath, 'weather.db');
 
@@ -212,7 +212,8 @@ class DatabaseHelper {
   }
 
 // Get weather data by location ID
-  Future<List<Map<String, dynamic>>> getWeatherDataByLocationId(int locationId) async {
+  Future<List<Map<String, dynamic>>> getWeatherDataByLocationId(
+      int locationId) async {
     final db = await database;
     return await db.query(
       'weather_data',
@@ -224,7 +225,8 @@ class DatabaseHelper {
   }
 
 // Get hourly data by location ID
-  Future<List<Map<String, dynamic>>> getHourlyDataByLocationId(int locationId) async {
+  Future<List<Map<String, dynamic>>> getHourlyDataByLocationId(
+      int locationId) async {
     final db = await database;
     return await db.query(
       'hourly_data',
@@ -235,7 +237,8 @@ class DatabaseHelper {
   }
 
 // Get daily data by location ID
-  Future<List<Map<String, dynamic>>> getDailyDataByLocationId(int locationId) async {
+  Future<List<Map<String, dynamic>>> getDailyDataByLocationId(
+      int locationId) async {
     final db = await database;
     return await db.query(
       'daily_data',
@@ -291,7 +294,7 @@ class DatabaseHelper {
     await deleteDatabase(path);
 
     // Khởi tạo lại database
-    _database = await _initDatabase();
+    _database = await initDatabase();
 
     log("Database has been completely reset!");
   }

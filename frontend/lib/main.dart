@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/services/database.dart';
 import 'package:get/get.dart';
 import 'package:frontend/screens/HomePage.dart';
 import 'package:frontend/screens/weather_stogare.dart';
 import 'package:frontend/services/translations.dart';
 //import 'package:frontend/services/widget_service.dart';
 
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   //await WidgetService.initWidgetService();
+
+//   runApp(const MyApp());
+// }
+
 void main() async {
-  //WidgetsFlutterBinding.ensureInitialized();
-  //await WidgetService.initWidgetService();
+  // Đảm bảo Flutter binding được khởi tạo
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Khởi tạo các dịch vụ cần thiết
+  try {
+    // Khởi tạo database helper
+    await DatabaseHelper().initDatabase();
+
+    // Khởi tạo các dịch vụ khác nếu cần
+    // await WidgetService.initWidgetService();
+  } catch (e) {
+    print("Lỗi khi khởi tạo dịch vụ: $e");
+  }
 
   runApp(const MyApp());
 }

@@ -26,10 +26,12 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   PageController _pageController = PageController();
   List<Map<String, dynamic>> _locations = [];
   int _currentLocationIndex = 0;
+  bool _isLoading = true; // Thêm biến trạng thái loading
+  bool _isInitialized = false;
 
   InAppWebViewController? _webViewController;
 
@@ -38,37 +40,71 @@ class _HomePageState extends State<HomePage> {
   Map<String, dynamic> get hourlyData => WeatherService.hourlyData;
   Map<String, dynamic> get dailyData => WeatherService.dailyData;
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _initializeApp();
+  // }
+
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Chạy sau khi build hoàn tất để tránh lỗi setState trong build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeApp();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }
 
+  // @override
+  // void dispose() {
+  //   _pageController.dispose();
+  //   super.dispose();
+  // }
+
   Future<void> _initializeApp() async {
-    // Lấy danh sách các vị trí đã lưu
-    await _loadSavedLocations();
+    try {
+      // Lấy danh sách các vị trí đã lưu
+      await _loadSavedLocations();
 
-    if (KeyLocation != null) {
-      // If we already have a location (from drawer selection), load its data
-      await WeatherService.loadWeatherData(
-          KeyLocation!.latitude, KeyLocation!.longitude);
-      await WeatherService.getLocationName(
-          KeyLocation!.latitude, KeyLocation!.longitude);
+      if (KeyLocation != null) {
+        // Nếu đã có vị trí (từ drawer selection), tải dữ liệu của nó
+        await WeatherService.loadWeatherData(
+            KeyLocation!.latitude, KeyLocation!.longitude);
+        await WeatherService.getLocationName(
+            KeyLocation!.latitude, KeyLocation!.longitude);
 
-      // Tìm và đặt index cho vị trí hiện tại
-      _setCurrentLocationIndex();
-    } else {
-      // Otherwise request location permission
-      await _requestLocationAndLoadData();
+        // Tìm và đặt index cho vị trí hiện tại
+        _setCurrentLocationIndex();
+      } else {
+        // Ngược lại, yêu cầu quyền truy cập vị trí
+        await _requestLocationAndLoadData();
+      }
+
+      // Thêm một độ trễ nhỏ để đảm bảo dữ liệu được xử lý đầy đủ
+      await Future.delayed(Duration(milliseconds: 100));
+
+      // Cập nhật UI sau khi dữ liệu được tải
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print("Lỗi khi khởi tạo ứng dụng: $e");
+      // Xử lý trạng thái lỗi tại đây
+      if (mounted) {
+        setState(() {
+          // Đặt trạng thái lỗi nếu cần
+        });
+      }
     }
-    // Update UI after data is loaded
-    setState(() {});
   }
 
   Future<void> _loadSavedLocations() async {
@@ -393,43 +429,6 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
-
-  // Widget _buildLocationIndicator() {
-  //   return Column(
-  //     mainAxisSize: MainAxisSize.min,
-  //     children: [
-  //       // Các chỉ báo trang
-  //       Row(
-  //         mainAxisAlignment: MainAxisAlignment.center,
-  //         children: List.generate(_locations.length, (index) {
-  //           bool isActive = index == _currentLocationIndex;
-  //           return GestureDetector(
-  //             onTap: () {
-  //               if (_pageController.hasClients) {
-  //                 _pageController.animateToPage(
-  //                   index,
-  //                   duration: Duration(milliseconds: 300),
-  //                   curve: Curves.easeInOut,
-  //                 );
-  //               }
-  //             },
-  //             child: AnimatedContainer(
-  //               duration: Duration(milliseconds: 300),
-  //               margin: EdgeInsets.symmetric(horizontal: 5),
-  //               height: isActive ? 12 : 8,
-  //               width: isActive ? 12 : 8,
-  //               decoration: BoxDecoration(
-  //                 shape: BoxShape.circle,
-  //                 color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
-  //               ),
-  //             ),
-  //           );
-  //         }),
-  //       ),
-  //       SizedBox(height: 8),
-  //     ],
-  //   );
-  // }
 
   Widget _buildCurrentWeather() {
     return Container(
@@ -833,9 +832,11 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Thêm dòng này
         children: [
-          // Header với icon và tiêu đề
+          // Phần header với icon và tiêu đề
           Row(
+            mainAxisSize: MainAxisSize.min, // Thêm dòng này
             children: [
               SvgPicture.asset(
                 icon,
@@ -844,31 +845,34 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.white,
               ),
               SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+              Flexible(
+                // Bọc bằng Flexible
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          SizedBox(
-            height: 8,
-          ),
+          SizedBox(height: 8),
 
           // Subtitle
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
+          if (subtitle.isNotEmpty)
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          SizedBox(
-            height: 8,
-          ),
-          // Progress bar (nếu có)
+          SizedBox(height: 8),
+
+          // Thanh tiến trình (nếu có)
           if (progress != null)
             Container(
               margin: EdgeInsets.only(top: 10),
@@ -885,7 +889,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-          // Gauge (cho áp suất)
+          // Đồng hồ đo (cho áp suất)
           if (showGauge && gaugeValue != null)
             Container(
               margin: EdgeInsets.only(top: 10),
@@ -896,7 +900,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-          // Wind Direction
+          // Hướng gió
           if (showWindDirection && windDegree != null)
             Container(
               margin: EdgeInsets.only(top: 5),
@@ -907,14 +911,20 @@ class _HomePageState extends State<HomePage> {
                 size: Size(150, 150),
               ),
             ),
+
           Spacer(),
+
           // Giá trị
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            // Bọc bằng FittedBox để tránh tràn
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
